@@ -6,8 +6,8 @@ Work in progress:
 - presently only 3D cartesian fields are supported
 
 TBD:
-- particles
 - CIRC
+- error messages
 - units resclaings if needed
 
 ### Basic usage :
@@ -19,4 +19,5 @@ ts = OpenPMDTimeSeries('./diags/hdf5/')
 conv = Opmd2VTK(ts)
 
 conv.write_fields_vtk(iteration=ts.iterations[-1])
+conv.write_species_vtk(iteration=ts.iterations[-1])
 ```

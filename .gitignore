@@ -6,6 +6,6 @@ __pycache__/
 
 build/
 dist/
-fbpic.egg-info/
+opmd2VTK.egg-info/
 .cache/
 .eggs/
