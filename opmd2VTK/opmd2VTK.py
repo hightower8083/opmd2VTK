@@ -23,7 +23,7 @@ import pyvtk as vtk
 import numpy as np
 import os
 
-class opmd2VTK:
+class Opmd2VTK:
     """
     Main class for the opmd2VTK converter
     Class is initialzed with the OpenPMDTimeSeries object from openPMD-viewer.

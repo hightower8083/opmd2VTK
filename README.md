@@ -13,10 +13,10 @@ TBD:
 ### Basic usage :
 ```python
 from opmd_viewer import OpenPMDTimeSeries
-from opmd2VTK.opmd2VTK import opmd2VTK
+from opmd2VTK import Opmd2VTK
 
 ts = OpenPMDTimeSeries('./diags/hdf5/')
-conv = opmd2VTK(ts)
+conv = Opmd2VTK(ts)
 
 conv.write_fields_vtk(iteration=ts.iterations[-1])
 ```
