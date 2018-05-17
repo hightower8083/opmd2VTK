@@ -1,0 +1,11 @@
+*.DS_Store
+opmd2VTK/__pycache__/
+opmd2VTK/*.DS_Store
+__pycache__/
+*.pyc
+
+build/
+dist/
+fbpic.egg-info/
+.cache/
+.eggs/
