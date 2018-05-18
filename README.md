@@ -11,7 +11,8 @@ Done
 
 TBD:
 - error messages
-- units resclaings if needed
+- units rescalings if needed
+- other openPMD features, which could have got missed
 
 ### Basic usage :
 ```python
