@@ -320,7 +320,7 @@ class Opmd2VTK:
         for i, th in enumerate(theta[1:]):
             fld2d, info = self.ts.get_field(comp, coord=coord,slicing=None,iteration=iteration,theta=th)
             fld3d[:,:,i+1] = fld2d[Nr:].T.astype(self.dtype)
-            fld3d[:,:,i+1+self.Nth//2] = fld2d[Nr:].T.astype(self.dtype)
+            fld3d[:,:,i+1+self.Nth//2] = fld2d[:Nr][::-1].T.astype(self.dtype)
 
         return fld3d.ravel(), info
 
