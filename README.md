@@ -2,11 +2,14 @@
 
 Based on openPMD_viewer and PyVTK
 
-Work in progress: 
-- presently only 3D cartesian fields are supported
+### Work in progress
+
+Done
+- 3D cartesian vector and scalar fields
+- CIRC cylindrical vector and scalar fields
+- particles
 
 TBD:
-- CIRC
 - error messages
 - units resclaings if needed
 
