@@ -304,13 +304,13 @@ class Opmd2VTK:
             the component of the vector field. If None, assumes the scalar
         """
         # Load the slice th=0
-        fld2d, info = self.ts.get_field(comp, coord=coord, iteration=iteration, theta=-np.pi/2)
+        fld2d, info = self.ts.get_field(comp, coord=coord, iteration=iteration, theta=0)
 
         z, r = info.z, info.r
         r = r[r.size//2:]
         Nz, Nr = z.size, r.size
 
-        theta = (2*np.pi/self.Nth) * np.arange(self.Nth//2) - np.pi/2
+        theta = (2*np.pi/self.Nth) * np.arange(self.Nth//2)
 
         fld3d = np.zeros((z.size, r.size, self.Nth+1), dtype=self.dtype)
         fld3d[:,:,0] = fld2d[Nr:].T.astype(self.dtype)
@@ -372,8 +372,8 @@ class Opmd2VTK:
         points = np.empty([len(theta)*len(r)*len(z),3])
 
         # copied from TVTK tutorial
-        x_plane = ( np.sin(theta) * r[:,None] ).ravel()
-        y_plane = ( np.cos(theta) * r[:,None] ).ravel()
+        x_plane = ( np.cos(theta) * r[:,None] ).ravel()
+        y_plane = ( np.sin(theta) * r[:,None] ).ravel()
         start = 0
         for iz in range(len(z)):
             end = start + len(x_plane)
