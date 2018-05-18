@@ -35,8 +35,8 @@ class Opmd2VTK:
     - _convert_species
     - _get_opmd_field_3d
     - _get_opmd_field_circ
-    - _make_grid_3d
-    - _make_grid_circ
+    - _make_vtk_mesh_3d
+    - _make_vtk_mesh_circ
 
     For more details, see the corresponding docstrings.
     """

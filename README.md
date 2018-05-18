@@ -1,6 +1,6 @@
-# opmd2VTK: Converter of openPMD files to VTK
+# opmd2VTK: Converter of [openPMD](http://www.openpmd.org/#/start) files to  [VTK](https://www.vtk.org) 
 
-Based on openPMD_viewer and PyVTK
+Based on [openPMD-viewer](https://github.com/openPMD/openPMD-viewer) and [PyVTK](https://github.com/pearu/pyvtk)
 
 ### Work in progress
 
