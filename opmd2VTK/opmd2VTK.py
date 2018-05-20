@@ -359,8 +359,6 @@ class Opmd2VTK:
         and using the dimensions, origin, resolutions from
         OpenPMDTimeSeries meta-info object (returned as the second
         argument of ts.get_field method).
-        Note:
-            this function operates only once per writing procedure
 
         Parameters
         ----------
@@ -379,11 +377,20 @@ class Opmd2VTK:
 
         # shift the visulization domain origin if needed
         if zmin_fixed is None:
-            origin = (self.info.xmin, self.info.ymin, self.info.zmin)
+            zmin = self.info.zmin
         else:
-            origin = (self.info.xmin, self.info.ymin, zmin_fixed)
+            zmin = zmin_fixed
+
+        # impose the symmetric transverse boundaries
+        # Note: this option will ignore staggering of fields
+        #       components, if any is present
+        # xmin = - 0.5*(self.info.xmax - self.info.xmin)
+        # ymin = - 0.5*(self.info.ymax - self.info.ymin)
+        xmin = self.info.xmin
+        ymin = self.info.ymin
 
         # register the grid VTK container
+        origin = (xmin, ymin, zmin)
         resolutions = (self.info.dx, self.info.dy, self.info.dz)
         self.grid = vtk.StructuredPoints(self.dimensions, origin, resolutions)
 
