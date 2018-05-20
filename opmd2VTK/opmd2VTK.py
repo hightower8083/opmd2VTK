@@ -41,7 +41,7 @@ class Opmd2VTK:
     For more details, see the corresponding docstrings.
     """
 
-    def __init__(self, ts, path_to_dir='./diags/', dtype=np.float32, Nth=24):
+    def __init__(self, ts, path_to_dir='./diags/', dtype=np.float32):
         """
         Constuctor of opmd2VTKconverter, based on the OpenPMDTimeSeries
         from openPMD-viewer.
@@ -62,7 +62,6 @@ class Opmd2VTK:
         self.grid = None
         self.zmin_orig = None
         self.dtype = dtype
-        self.Nth = Nth
         self.dimensions = None
         # Register the geometry type (not supposed to change)
         self.geom = list(self.ts.avail_geom)[0]
@@ -77,7 +76,7 @@ class Opmd2VTK:
                 pass
 
     def write_fields_vtk(self, comps=None, iteration=0,
-                         format='binary', zmin_fixed=None):
+                         format='binary', zmin_fixed=None, Nth=24):
         """
         Convert the given list of scalar and vector fields from the
         openPMD format to a VTK container, and write it to the disk.
@@ -99,11 +98,19 @@ class Opmd2VTK:
             some cases (e.g. with moving window) it is useful to
             fix the origin of the visualization domain. If float number
             is given it will be use as z-origin of the visualization domain
+        Nth: int, optional
+            Number of nodes of the theta-axis of a cylindric grid in case
+            of thetaMode geometry. Note: for high the Nth>>10 the convertion
+            may become rather slow.
         """
         # Check available fields if comps is not defined
         if comps is None:
             comps = self.ts.avail_fields
 
+        # Register the number of theta grid points
+        self.Nth = Nth
+
+        # Set grid to None, in order to recomupte it
         self.grid = None
 
         # Convert the fields one by one and store them to the list
@@ -162,9 +169,9 @@ class Opmd2VTK:
         # Make a numer string for the file to write
         istr = str(iteration)
         while len(istr)<7 : istr='0'+istr
-
         name_base = self.path+'vtk_specie_{:}_{:}'
 
+        # Convert and save all the species
         for specie in species:
             pts_vtk, scalars_vtk = self._convert_species(specie, scalars=scalars,
                                                          iteration=iteration,
@@ -238,23 +245,28 @@ class Opmd2VTK:
         iteration: int
             iteration number to treat
         """
-
+        # Get the particle data
         pts = self.ts.get_particle(var_list=['x', 'y', 'z']+scalars,
                                    species=species, iteration=iteration,
                                    select=select)
 
+        # Split coordinates and scalars
         coords = np.array(pts[:3]).astype(self.dtype).T
         scalars_to_add = pts[3:]
 
+        # If zmin_fixed mode is chosen, shift the z-coordinates
+        # to match the fields box
         if zmin_fixed is not None:
             if self.zmin_orig is None:
                 print('zmin_fixed mode can only be use after the fields')
             else:
                 coords[:,2] -= self.zmin_orig - zmin_fixed
 
+        # Create the points container
         pts_vtk = vtk.PolyData(coords)
-        scalars_vtk = []
 
+        # Create the scalars containers
+        scalars_vtk = []
         for i, scalar in enumerate(scalars_to_add):
             scalars_vtk.append(vtk.Scalars(scalar.astype(self.dtype),
                                name=scalars[i]))
@@ -279,8 +291,11 @@ class Opmd2VTK:
         coord: str or None
             the component of the vector field. If None, assumes the scalar
         """
+        # Get the particle data
+        fld, info = self.ts.get_field(comp, coord=coord,slicing=None,
+                                      iteration=iteration)
 
-        fld, info = self.ts.get_field(comp, coord=coord,slicing=None,iteration=iteration)
+        # register the grid dimensions
         self.dimensions = fld.shape
 
         return fld.astype(self.dtype).T.ravel(), info
@@ -304,19 +319,28 @@ class Opmd2VTK:
             the component of the vector field. If None, assumes the scalar
         """
         # Load the slice th=0
-        fld2d, info = self.ts.get_field(comp, coord=coord, iteration=iteration, theta=0)
+        fld2d, info = self.ts.get_field(comp, coord=coord,
+                                        iteration=iteration, theta=0)
 
+        # Get the Z and R axes from the original data
         z, r = info.z, info.r
         r = r[r.size//2:]
         Nz, Nr = z.size, r.size
 
+        # Make Theta axis (half)
         theta = (2*np.pi/self.Nth) * np.arange(self.Nth//2)
 
+        # Allocate the scalar field in the VTK shape (Z,R,Theta)
         fld3d = np.zeros((z.size, r.size, self.Nth+1), dtype=self.dtype)
+
+        # Write the field for th=0
+        # Note: array contain a copy of th=0 at th=2*pi, which is
+        # needed to close have a closed cylinder
         fld3d[:,:,0] = fld2d[Nr:].T.astype(self.dtype)
         fld3d[:,:,-1] = fld2d[Nr:].T.astype(self.dtype)
         fld3d[:,:,self.Nth//2] = fld2d[:Nr][::-1].T.astype(self.dtype)
 
+        # Write the fields for all other angles
         for i, th in enumerate(theta[1:]):
             fld2d, info = self.ts.get_field(comp, coord=coord,slicing=None,iteration=iteration,theta=th)
             fld3d[:,:,i+1] = fld2d[Nr:].T.astype(self.dtype)
@@ -331,47 +355,67 @@ class Opmd2VTK:
         OpenPMDTimeSeries meta-info object (returned as the second
         argument of ts.get_field method).
         Note:
-            this function operates only once, and all following calls
-        """
+            this function operates only once per writing procedure
 
+        Parameters
+        ----------
+        zmin_fixed: float or None
+            When treating the simulation data for the animation, in
+            some cases (e.g. with moving window) it is useful to
+            fix the origin of the visualization domain. If float number
+            is given it will be use as z-origin of the visualization domain
+        """
+        # Exit if the grid already exist
         if self.grid is not None:
             return
 
+        # register the z-origin of the grid
         self.zmin_orig = self.info.zmin*1e6
 
+        # shift the visulization domain origin if needed
         if zmin_fixed is None:
             origin = (self.info.xmin*1e6, self.info.ymin*1e6, self.info.zmin*1e6)
         else:
             origin = (self.info.xmin*1e6, self.info.ymin*1e6, zmin_fixed)
 
+        # register the grid VTK container
         resolutions = (self.info.dx*1e6, self.info.dy*1e6, self.info.dz*1e6)
         self.grid = vtk.StructuredPoints(self.dimensions, origin, resolutions)
 
     def _make_vtk_mesh_circ(self, zmin_fixed):
         """
-        Create a simple 3D mesh using vtk.StructuredPoints method,
-        and using the dimensions, origin, resolutions from
-        OpenPMDTimeSeries meta-info object (returned as the second
-        argument of ts.get_field method).
+        Create a cylindric mesh using vtk.StructuredGrid method.
         Note:
             this function operates only once, and all following calls
+
+        Parameters
+        ----------
+        zmin_fixed: float or None
+            When treating the simulation data for the animation, in
+            some cases (e.g. with moving window) it is useful to
+            fix the origin of the visualization domain. If float number
+            is given it will be use as z-origin of the visualization domain
         """
+        # Exit if the grid already exist
         if self.grid is not None:
             return
 
+        # register the z-origin of the grid
         self.zmin_orig = self.info.zmin*1e6
 
+        # Get the Z and R axes from the original data
         z, r = self.info.z*1e6, self.info.r*1e6
         r = r[r.size//2:]
         Nr, Nz = r.size, z.size
+        # Make Theta axis (half)
         theta = np.r_[0:2*np.pi:(self.Nth+1)*1j]
 
+        # shift the visulization domain origin if needed
         if zmin_fixed is not None:
             z -= z.min() - zmin_fixed
 
+        # Make the grid-point (copied from TVTK tutorial)
         points = np.empty([len(theta)*len(r)*len(z),3])
-
-        # copied from TVTK tutorial
         x_plane = ( np.cos(theta) * r[:,None] ).ravel()
         y_plane = ( np.sin(theta) * r[:,None] ).ravel()
         start = 0
@@ -383,5 +427,6 @@ class Opmd2VTK:
             points[start:end,2] = z_plane
             start = end
 
+        # register the grid VTK container
         self.grid = vtk.StructuredGrid(dimensions=(self.Nth+1, Nr, Nz),
                                        points=points)
