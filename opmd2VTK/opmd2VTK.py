@@ -254,6 +254,11 @@ class Opmd2VTK:
         coords = np.array(pts[:3]).astype(self.dtype).T
         scalars_to_add = pts[3:]
 
+        # Convert microns to meters
+        # Note: in further release of openPMD-viewer, coords
+        #       are expected to be meters by default
+        coords *= 1e-6
+
         # If zmin_fixed mode is chosen, shift the z-coordinates
         # to match the fields box
         if zmin_fixed is not None:
@@ -370,16 +375,16 @@ class Opmd2VTK:
             return
 
         # register the z-origin of the grid
-        self.zmin_orig = self.info.zmin*1e6
+        self.zmin_orig = self.info.zmin
 
         # shift the visulization domain origin if needed
         if zmin_fixed is None:
-            origin = (self.info.xmin*1e6, self.info.ymin*1e6, self.info.zmin*1e6)
+            origin = (self.info.xmin, self.info.ymin, self.info.zmin)
         else:
-            origin = (self.info.xmin*1e6, self.info.ymin*1e6, zmin_fixed)
+            origin = (self.info.xmin, self.info.ymin, zmin_fixed)
 
         # register the grid VTK container
-        resolutions = (self.info.dx*1e6, self.info.dy*1e6, self.info.dz*1e6)
+        resolutions = (self.info.dx, self.info.dy, self.info.dz)
         self.grid = vtk.StructuredPoints(self.dimensions, origin, resolutions)
 
     def _make_vtk_mesh_circ(self, zmin_fixed):
@@ -401,10 +406,10 @@ class Opmd2VTK:
             return
 
         # register the z-origin of the grid
-        self.zmin_orig = self.info.zmin*1e6
+        self.zmin_orig = self.info.zmin
 
         # Get the Z and R axes from the original data
-        z, r = self.info.z*1e6, self.info.r*1e6
+        z, r = self.info.z, self.info.r
         r = r[r.size//2:]
         Nr, Nz = r.size, z.size
         # Make Theta axis (half)
