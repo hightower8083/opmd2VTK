@@ -182,6 +182,11 @@ class Opmd2VTK:
             Scalar and vector fields to be converted
             ex. : 'E', 'B', 'J', 'rho'
             converts all available components provided by OpenPMDTimeSeries
+
+        Returns
+        -------
+        vec: vtk.Vectors
+            VTK vector containter
         """
         # Select the tools for the given geometry
         if self.geom=='3dcartesian':
@@ -213,7 +218,10 @@ class Opmd2VTK:
                   .format(fld),
                   "and option CommonMesh=True is used")
 
-        return vtk.Vectors(np.array(flds).T, name=fld)
+        flds = np.array(flds).T
+        vecs = vtk.Vectors(flds, name=fld)
+
+        return vecs
 
     def _convert_field_vec_comp(self, fld, comp):
         """
@@ -229,6 +237,11 @@ class Opmd2VTK:
 
         comp: str
             Field component, for example, 'x', 'y' or 'z'
+
+        Returns
+        -------
+        scl: vtk.Scalars
+            VTK scalar containter
         """
         # Choose the get_field and make_grid finctions for the given geometry
         if self.geom=='3dcartesian':
@@ -240,8 +253,9 @@ class Opmd2VTK:
 
         fld_data, self.info = get_field(fld, comp=comp)
         make_mesh()
+        scl = vtk.Scalars(fld_data, name=fld+comp)
 
-        return vtk.Scalars(fld_data, name=fld+comp)
+        return scl
 
     def _convert_field_scl(self, fld):
         """
@@ -254,6 +268,11 @@ class Opmd2VTK:
             Scalar and vector fields to be converted
             ex. : 'E', 'B', 'J', 'rho'
             converts all available components provided by OpenPMDTimeSeries
+
+        Returns
+        -------
+        scl: vtk.Scalars
+            VTK scalar containter
         """
         # Choose the get_field and make_grid finctions for the given geometry
         if self.geom=='3dcartesian':
@@ -265,7 +284,8 @@ class Opmd2VTK:
 
         fld_data, self.info = get_field(fld)
         make_mesh()
-        return vtk.Scalars(fld_data, name=fld)
+        scl = vtk.Scalars(fld_data, name=fld)
+        return scl
 
     def _get_opmd_field_3d(self, fld, comp=None):
         """
@@ -281,6 +301,15 @@ class Opmd2VTK:
 
         comp: str or None
             the component of the vector field. If None, assumes the scalar
+
+        Returns
+        -------
+        fld: numpy.array
+            1D NumPy array aligned with the mesh
+
+        info: dict
+            fields metadata as returned by the get_field method of
+            openPMD TimeSeries
         """
         # Get the particle data
         fld_data, info = self.ts.get_field(fld, coord=comp, slicing=None,
@@ -289,7 +318,9 @@ class Opmd2VTK:
         # register the grid dimensions
         self.dimensions = fld_data.shape
 
-        return fld_data.astype(self.dtype).T.ravel(), info
+        fld_data = fld_data.astype(self.dtype).T.ravel()
+
+        return fld_data, info
 
     def _get_opmd_field_circ(self, fld, comp=None):
         """
@@ -305,6 +336,15 @@ class Opmd2VTK:
 
         comp: str or None
             the component of the vector field. If None, assumes the scalar
+
+        Returns
+        -------
+        fld: numpy.array
+            1D NumPy array aligned with the mesh
+
+        info: dict
+            fields metadata as returned by the get_field method of
+            openPMD TimeSeries
         """
         # Load the slice th=0
         fld2d, info = self.ts.get_field(fld, coord=comp,
@@ -335,7 +375,10 @@ class Opmd2VTK:
             fld3d[:,:,i+1] = fld2d[Nr:].T.astype(self.dtype)
             fld3d[:,:,i+1+self.Nth//2] = fld2d[:Nr][::-1].T.astype(self.dtype)
 
-        return fld3d.ravel(), info
+        fld3d = fld3d.ravel()
+        fld2d = None
+
+        return fld3d, info
 
     def _make_vtk_mesh_3d(self):
         """
@@ -367,6 +410,11 @@ class Opmd2VTK:
             some cases (e.g. with moving window) it is useful to
             fix the origin of the visualization domain. If float number
             is given it will be use as z-origin of the visualization domain
+
+        Returns
+        -------
+        origin: 3-tuple
+            X, Y and Z positions of the visualization  domain
         """
         # register the z-origin of the grid
         self.zmin_orig = self.info.zmin
@@ -426,6 +474,11 @@ class Opmd2VTK:
     def _get_origin_circ(self):
         """
         Get origin of the CIRC visualization domain
+
+        Returns
+        -------
+        origin: 3-tuple
+            X, Y and Z positions of the visualization  domain
         """
 
         # Get the Z and R axes from the original data
@@ -479,6 +532,8 @@ class Opmd2VTK:
         # register constants
         self.iteration = iteration
         self.zmin_fixed = zmin_fixed
+        self.select = select
+        self.scalars = scalars
 
         # Make a numer string for the file to write
         istr = str(self.iteration)
@@ -487,13 +542,12 @@ class Opmd2VTK:
 
         # Convert and save all the species
         for specie in species:
-            pts_vtk, scalars_vtk = self._convert_species(specie,
-               scalars=scalars, select=select)
+            pts_vtk, scalars_vtk = self._convert_species(specie)
 
             vtk.VtkData(pts_vtk, vtk.PointData(*scalars_vtk) )\
                 .tofile(name_base.format(specie,istr), format=format)
 
-    def _convert_species(self, species, scalars, select):
+    def _convert_species(self, species):
         """
         Convert the given species from the openPMD format to a VTK container.
 
@@ -503,14 +557,18 @@ class Opmd2VTK:
             Name of the specis
             ex. : 'electrons', 'He+1'
 
-        scalars: list of strings
-            list of values associated with each paricle to be included.
-            ex. : 'charge', 'id', 'mass', 'x', 'y', 'z', 'ux', 'uy', 'uz', 'w'
+        Returns
+        -------
+        pts_vtk: vtk.PolyData
+            VTK PolyData container with the particles 3D positions
+
+        scalars_vtk: list of vtk.Scalars
+            List of scalars associated with the particles
         """
         # Get the particle data
-        pts = self.ts.get_particle(var_list=['x', 'y', 'z']+scalars,
+        pts = self.ts.get_particle(var_list=['x', 'y', 'z']+self.scalars,
                                    species=species, iteration=self.iteration,
-                                   select=select)
+                                   select=self.select)
 
         # Split coordinates and scalars
         coords = np.array(pts[:3]).astype(self.dtype).T
@@ -536,6 +594,6 @@ class Opmd2VTK:
         scalars_vtk = []
         for i, scalar in enumerate(scalars_to_add):
             scalars_vtk.append(vtk.Scalars(scalar.astype(self.dtype),
-                               name=scalars[i]))
+                               name=self.scalars[i]))
 
         return pts_vtk, scalars_vtk
