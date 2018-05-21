@@ -40,7 +40,7 @@ conv = Opmd2VTK(ts)
 
 for it in ts.iterations[comm.rank::comm.size]:
     conv.write_fields_vtk(iteration=it, zmin_fixed=0)
-    conv.write_species_vtk(iteration=ts.iterations[-1])
+    conv.write_species_vtk(iteration=it)
 ```
  
 ### Useful features :
