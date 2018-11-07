@@ -1,25 +1,27 @@
 # opmd2VTK: Converter of [openPMD](http://www.openpmd.org/#/start) files to  [VTK](https://www.vtk.org) 
 
 The API for OpenPMD-files is based on [openPMD-viewer](https://github.com/openPMD/openPMD-viewer) and possible VTK APIs are [PyVTK](https://github.com/pearu/pyvtk) and 
-[tvtk](http://docs.enthought.com/mayavi/tvtk/README.html). The 
+[tvtk](http://docs.enthought.com/mayavi/tvtk/README.html). PyVTK API is a more lightweight dependance, but tvtk API works with XML format of VTK and is faster.
 
 
 ## Installation
 The code was tested only under Linux and MacOS. The recommended installation is through the [Anaconda](https://www.continuum.io/why-anaconda) distribution.
 If Anaconda is not your default Python installation, download and install it from [here](https://www.continuum.io/downloads).
 
-It is assumed that openPMD-viewer is already installed.
-
-- for tvtk API install it as following:
+It is assumed that openPMD-viewer is already installed. 
+- VTK can be installed from anaconda:
 ```
 conda install vtk
-pip install mayavi
 ```
-- for pyvtk API install it as following:
+- for pyvtk API (this step is default and is also done by the installer):
 ```
 pip install pyvtk
 ```
-- clone the code source, `cd` into the folder and install it:
+- tvtk API is a part of Mayavi and can be installed with it:
+```
+pip install mayavi
+```
+- clone **opmd2VTK**, `cd` into the folder and install it:
 ```
 git clone https://github.com/hightower8083/opmd2VTK.git
 cd opmd2VTK
@@ -64,6 +66,5 @@ for it in ts.iterations[comm.rank::comm.size]:
 
 TBD:
 - error messages
-- units rescalings if needed
-- other openPMD features, which could be missing
+- debugging
 
