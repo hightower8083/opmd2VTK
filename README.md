@@ -28,9 +28,12 @@ cd opmd2VTK
 python setup.py install
 ```
 
-## Basic usage (for pyvtk API replace `opmd2VTK_tvtk` with `opmd2VTK_pyvtk`):
+## Basic usage 
 
-- Serial
+(for pyvtk API replace `opmd2VTK_tvtk` with `opmd2VTK_pyvtk`):
+
+- serial
+
 ```python
 from opmd_viewer import OpenPMDTimeSeries
 from opmd2VTK.opmd2VTK_tvtk import Opmd2VTK
@@ -41,8 +44,8 @@ conv = Opmd2VTK(ts)
 conv.write_fields_vtk(iteration=ts.iterations[-1])
 conv.write_species_vtk(iteration=ts.iterations[-1])
 ```
+- parallel script (needs mpi4py)
 
-- Parallel script (needs mpi4py)
 ```python
 from opmd_viewer import OpenPMDTimeSeries
 from opmd2VTK.opmd2VTK_tvtk import Opmd2VTK
@@ -57,7 +60,7 @@ for it in ts.iterations[comm.rank::comm.size]:
     conv.write_species_vtk(iteration=it)
 ```
  
-### Useful features :
+## Useful features :
 - Angular resolution of cylindric grid is defined by the argument `Nth` of `write_fields_vtk`;
 - `zmin_fixed` allows to fix the origin of visualization domain both for fields and particles (useful for animations);
 - argument `CommonMesh=True` groups all fields to the same mesh, while otherwise each component is written to a separate file (resolves the issue of the staggered fields)
