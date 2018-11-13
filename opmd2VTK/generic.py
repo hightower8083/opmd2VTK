@@ -41,7 +41,8 @@ class opmd2VTKGeneric:
     For more details, see the corresponding docstrings.
     """
 
-    def __init__(self, ts, path_to_dir='./diags/', dtype=np.float32):
+    def __init__( self, ts, path_to_dir='./diags/', 
+                  vec_comps=['x', 'y', 'z'], dtype=np.float32):
         """
         Constuctor of opmd2VTKconverter, based on the OpenPMDTimeSeries
         from openPMD-viewer.
@@ -54,6 +55,10 @@ class opmd2VTKGeneric:
         path_to_dir: string
             The path to the directory where the openPMD files are.
 
+        vec_comps: list or tuple
+            Component of vector fields. Known components available in 3D
+            and CIRC geometries are ['x', 'y', 'z', 'r', 't']
+
         dtype: numpy dtype
             The data type with which the data should be stored in VTK
         """
@@ -63,6 +68,7 @@ class opmd2VTKGeneric:
         self.zmin_orig = None
         self.dtype = dtype
         self.dimensions = None
+        self.vec_comps = vec_comps
 
         # Register the geometry type (not supposed to change)
         self.geom = list(self.ts.avail_geom)[0]
@@ -100,7 +106,7 @@ class opmd2VTKGeneric:
             make_mesh = self._make_mesh_3d
             get_origin = self._get_origin_3d
         elif self.geom=='thetaMode':
-            comps = ['x', 'y', 'z']
+            comps = self.vec_comps
             get_field = self._get_opmd_field_circ
             make_mesh = self._make_mesh_circ
             get_origin = self._get_origin_circ
@@ -139,7 +145,7 @@ class opmd2VTKGeneric:
             converts all available components provided by OpenPMDTimeSeries
 
         comp: str
-            Field component, for example, 'x', 'y' or 'z'
+            Field component, for example, 'x', 'y', 'z', 'r', 't' 
 
         Returns
         -------
