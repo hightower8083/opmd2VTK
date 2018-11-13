@@ -23,14 +23,11 @@ import pyvtk as vtk
 import numpy as np
 import os
 
-class Opmd2VTK:
+class opmd2VTKGeneric:
     """
-    Main class for the opmd2VTK converter
+    Generic (API-independant) class for the opmd2VTK converter
     Class is initialzed with the OpenPMDTimeSeries object from openPMD-viewer.
-    It contains the following public methods:
-    - write_fields_vtk
-    - write_species_vtk
-    and private methods:
+    It contains the following private methods:
     - _convert_field_vec_full
     - _convert_field_vec_comp
     - _convert_field_scl
@@ -80,97 +77,6 @@ class Opmd2VTK:
             except OSError :
                 pass
 
-    def write_fields_vtk(self, flds=None, iteration=0,
-                         format='binary', zmin_fixed=None,
-                         Nth=24, CommonMesh=True):
-        """
-        Convert the given list of scalar and vector fields from the
-        openPMD format to a VTK container, and write it to the disk.
-
-        Parameters
-        ----------
-        flds: list or None
-            List of scalar and vector fields to be converted. If None, it
-            converts all available components provided by OpenPMDTimeSeries
-
-        iteration: int
-            iteration number to treat (default 0)
-
-        format: str
-            format for the VTK file, either 'ascii' or 'binary'
-
-        zmin_fixed: float or None
-            When treating the simulation data for the animation, in
-            some cases (e.g. with moving window) it is useful to
-            fix the origin of the visualization domain. If float number
-            is given it will be use as z-origin of the visualization domain
-
-        Nth: int, optional
-            Number of nodes of the theta-axis of a cylindric grid in case
-            of thetaMode geometry. Note: for high the Nth>>10 the convertion
-            may become rather slow.
-
-        CommonMesh: bool
-            If True, the same mesh will be used and fields will be converted
-            to the scalar and vector types. If False, each component will be
-            saved as a separate file with its own grid.
-        """
-        # Check available fields if comps is not defined
-        if flds is None:
-            flds = self.ts.avail_fields
-
-        # Register constant parameters
-        self.iteration = iteration
-        self.zmin_fixed = zmin_fixed
-        self.CommonMesh = CommonMesh
-        self.Nth = Nth
-
-        # Set grid to None, in order to recomupte it
-        self.grid = None
-
-        # Make a numer string for the file to write
-        istr = str(self.iteration)
-        while len(istr)<7 : istr='0'+istr
-
-        if self.CommonMesh:
-
-            # get and store fields Scalars and Vectors
-            vtk_container = []
-            for fld in flds:
-                field_type = self.ts.fields_metadata[fld]['type']
-                if field_type=='vector':
-                    vtk_container.append( self._convert_field_vec_full(fld) )
-                elif field_type=='scalar':
-                    vtk_container.append( self._convert_field_scl(fld) )
-
-            # write VTK file
-            vtk.VtkData(self.grid, vtk.PointData(*vtk_container))\
-                .tofile(self.path+'vtk_fields_'+istr, format=format)
-        else:
-            for fld in flds:
-                field_type = self.ts.fields_metadata[fld]['type']
-                if field_type=='vector':
-                    comps = ['x', 'y', 'z']
-                    for comp in comps:
-                        fld_full = fld + comp
-                        file_name = self.path+'vtk_fields_{}_{}'\
-                           .format(fld_full, istr)
-
-                        VtkFld = self._convert_field_vec_comp(fld, comp)
-
-                        # write VTK file
-                        vtk.VtkData(self.grid, vtk.PointData(VtkFld))\
-                           .tofile(file_name, format=format)
-
-                elif field_type=='scalar':
-                    file_name = self.path+'vtk_fields_{}_{}'\
-                       .format(fld, istr)
-
-                    VtkFld = self._convert_field_scl(fld)
-                    # write VTK file
-                    vtk.VtkData(self.grid, vtk.PointData(VtkFld))\
-                       .tofile(file_name, format=format)
-
     def _convert_field_vec_full(self, fld):
         """
         Convert the given scalar or vector fields from the
@@ -218,10 +124,7 @@ class Opmd2VTK:
                   .format(fld),
                   "and option CommonMesh=True is used")
 
-        flds = np.array(flds).T
-        vecs = vtk.Vectors(flds, name=fld)
-
-        return vecs
+        return flds, fld
 
     def _convert_field_vec_comp(self, fld, comp):
         """
@@ -253,9 +156,8 @@ class Opmd2VTK:
 
         fld_data, self.info = get_field(fld, comp=comp)
         make_mesh()
-        scl = vtk.Scalars(fld_data, name=fld+comp)
 
-        return scl
+        return fld_data, fld+comp
 
     def _convert_field_scl(self, fld):
         """
@@ -284,8 +186,7 @@ class Opmd2VTK:
 
         fld_data, self.info = get_field(fld)
         make_mesh()
-        scl = vtk.Scalars(fld_data, name=fld)
-        return scl
+        return fld_data, fld
 
     def _get_opmd_field_3d(self, fld, comp=None):
         """
@@ -380,173 +281,6 @@ class Opmd2VTK:
 
         return fld3d, info
 
-    def _make_vtk_mesh_3d(self):
-        """
-        Create a simple 3D mesh using vtk.StructuredPoints method,
-        and using the dimensions, origin, resolutions from
-        OpenPMDTimeSeries meta-info object (returned as the second
-        argument of ts.get_field method).
-        """
-        # Exit if the grid already exists and CommonMesh is True
-        if self.grid is not None and self.CommonMesh:
-            return
-
-        # Get origin and resolution of the 3D visualization domain
-        origin = self._get_origin_3d()
-        resolutions = (self.info.dx, self.info.dy, self.info.dz)
-
-        # register the grid VTK container
-        self.grid = vtk.StructuredPoints(self.dimensions, origin,
-                                         resolutions)
-
-    def _get_origin_3d(self):
-        """
-        Get origin of the 3D visualization domain
-
-        Parameters
-        ----------
-        zmin_fixed: float or None
-            When treating the simulation data for the animation, in
-            some cases (e.g. with moving window) it is useful to
-            fix the origin of the visualization domain. If float number
-            is given it will be use as z-origin of the visualization domain
-
-        Returns
-        -------
-        origin: 3-tuple
-            X, Y and Z positions of the visualization  domain
-        """
-        # register the z-origin of the grid
-        self.zmin_orig = self.info.zmin
-
-        # shift the visualization domain origin if needed
-        if self.zmin_fixed is None:
-            zmin = self.info.zmin
-        else:
-            zmin = self.zmin_fixed
-
-        xmin = self.info.xmin
-        ymin = self.info.ymin
-
-        return (xmin, ymin, zmin)
-
-    def _make_vtk_mesh_circ(self):
-        """
-        Create a cylindric mesh using vtk.StructuredGrid method.
-        Note:
-            this function operates only once, and all following calls
-        """
-        # Exit if the grid already exists and CommonMesh is True
-        if self.grid is not None and self.CommonMesh:
-            return
-
-        # register the z-origin of the grid
-        self.zmin_orig = self.info.zmin
-
-        # Get the Z and R axes from the original data
-        z, r = self.info.z, self.info.r
-        r = r[r.size//2:]
-        Nr, Nz = r.size, z.size
-        # Make Theta axis (half)
-        theta = np.r_[0:2*np.pi:(self.Nth+1)*1j]
-
-        # shift the visualization domain origin if needed
-        if self.zmin_fixed is not None:
-            z -= z.min() - self.zmin_fixed
-
-        # Make the grid-point (copied from TVTK tutorial)
-        points = np.empty([len(theta)*len(r)*len(z),3])
-        x_plane = ( np.cos(theta) * r[:,None] ).ravel()
-        y_plane = ( np.sin(theta) * r[:,None] ).ravel()
-        start = 0
-        for iz in range(len(z)):
-            end = start + len(x_plane)
-            z_plane = z[iz]
-            points[start:end,0] = x_plane
-            points[start:end,1] = y_plane
-            points[start:end,2] = z_plane
-            start = end
-
-        # register the grid VTK container
-        self.grid = vtk.StructuredGrid(dimensions=(self.Nth+1, Nr, Nz),
-                                       points=points)
-
-    def _get_origin_circ(self):
-        """
-        Get origin of the CIRC visualization domain
-
-        Returns
-        -------
-        origin: 3-tuple
-            X, Y and Z positions of the visualization  domain
-        """
-
-        # Get the Z and R axes from the original data
-        z, r = self.info.z, self.info.r
-        r = r[r.size//2:]
-
-        # shift the visualization domain origin if needed
-        if self.zmin_fixed is not None:
-            z -= z.min() - self.zmin_fixed
-
-        return (z.min(), -r.max())
-
-    def write_species_vtk(self, species=None, iteration=0, format='binary',
-                          scalars=['ux', 'uy', 'uz', 'w'], select=None,
-                          zmin_fixed=None):
-        """
-        Convert the given list of species from the openPMD format to
-        a VTK container, and write it to the disk.
-
-        Parameters
-        ----------
-        species: list or None
-            List of species names to be converted. If None, it
-            converts all available species provided by OpenPMDTimeSeries
-
-        scalars: list of strings
-            list of values associated with each paricle to be included.
-            ex. : 'charge', 'id', 'mass', 'x', 'y', 'z', 'ux', 'uy', 'uz', 'w'
-
-        iteration: int
-            iteration number to treat (default 0)
-
-        select: dict
-            dictonary to impoer selection on the particles,
-            as it is defined in opnePMD_viewer
-
-        format: str
-            format for the VTK file, either 'ascii' or 'binary'
-
-        zmin_fixed: float or None
-            When treating the simulation data for the animation, in
-            some cases (e.g. with moving window) it is useful to
-            fix the origin of the visualization domain. If float number
-            is given it will be use as z-origin of the visualization domain
-
-        """
-        # Check available fields if comps is not defined
-        if species is None:
-            species = self.ts.avail_species
-
-        # register constants
-        self.iteration = iteration
-        self.zmin_fixed = zmin_fixed
-        self.select = select
-        self.scalars = scalars
-
-        # Make a numer string for the file to write
-        istr = str(self.iteration)
-        while len(istr)<7 : istr='0'+istr
-        name_base = self.path+'vtk_specie_{:}_{:}'
-
-        # Convert and save all the species
-        for specie in species:
-            pts_vtk, scalars_vtk = self._convert_species(specie)
-
-            vtk.VtkData(pts_vtk, vtk.PointData(*scalars_vtk) )\
-                .tofile(name_base.format(specie,istr), format=format)
-
     def _convert_species(self, species):
         """
         Convert the given species from the openPMD format to a VTK container.
@@ -587,13 +321,111 @@ class Opmd2VTK:
             else:
                 coords[:,2] -= self.zmin_orig - self.zmin_fixed
 
-        # Create the points container
-        pts_vtk = vtk.PolyData(coords)
+        return coords, scalars_to_add
 
-        # Create the scalars containers
-        scalars_vtk = []
-        for i, scalar in enumerate(scalars_to_add):
-            scalars_vtk.append(vtk.Scalars(scalar.astype(self.dtype),
-                               name=self.scalars[i]))
+    def _make_vtk_mesh_3d(self):
+        """
+        Create a simple 3D mesh using vtk.StructuredPoints method,
+        and using the dimensions, origin, resolutions from
+        OpenPMDTimeSeries meta-info object (returned as the second
+        argument of ts.get_field method).
+        """
+        # Exit if the grid already exists and CommonMesh is True
+        if self.grid is not None and self.CommonMesh:
+            return
 
-        return pts_vtk, scalars_vtk
+        # Get origin and resolution of the 3D visualization domain
+        origin = self._get_origin_3d()
+        resolutions = (self.info.dx, self.info.dy, self.info.dz)
+        self._get_mesh_3d(origin, resolutions)
+
+    def _make_vtk_mesh_circ(self):
+        """
+        Create a cylindric mesh using vtk.StructuredGrid method.
+        Note:
+            this function operates only once, and all following calls
+        """
+        # Exit if the grid already exists and CommonMesh is True
+        if self.grid is not None and self.CommonMesh:
+            return
+
+        # register the z-origin of the grid
+        self.zmin_orig = self.info.zmin
+
+        # Get the Z and R axes from the original data
+        z, r = self.info.z, self.info.r
+        r = r[r.size//2:]
+        Nr, Nz = r.size, z.size
+        # Make Theta axis (half)
+        theta = np.r_[0:2*np.pi:(self.Nth+1)*1j]
+
+        # shift the visualization domain origin if needed
+        if self.zmin_fixed is not None:
+            z -= z.min() - self.zmin_fixed
+
+        # Make the grid-point (copied from TVTK tutorial)
+        points = np.empty([len(theta)*len(r)*len(z),3])
+        x_plane = ( np.cos(theta) * r[:,None] ).ravel()
+        y_plane = ( np.sin(theta) * r[:,None] ).ravel()
+        start = 0
+        for iz in range(len(z)):
+            end = start + len(x_plane)
+            z_plane = z[iz]
+            points[start:end,0] = x_plane
+            points[start:end,1] = y_plane
+            points[start:end,2] = z_plane
+            start = end
+
+        # register the grid VTK container
+        self._get_mesh_circ(dimensions=(self.Nth+1, Nr, Nz), points)
+
+    def _get_origin_3d(self):
+        """
+        Get origin of the 3D visualization domain
+
+        Parameters
+        ----------
+        zmin_fixed: float or None
+            When treating the simulation data for the animation, in
+            some cases (e.g. with moving window) it is useful to
+            fix the origin of the visualization domain. If float number
+            is given it will be use as z-origin of the visualization domain
+
+        Returns
+        -------
+        origin: 3-tuple
+            X, Y and Z positions of the visualization  domain
+        """
+        # register the z-origin of the grid
+        self.zmin_orig = self.info.zmin
+
+        # shift the visualization domain origin if needed
+        if self.zmin_fixed is None:
+            zmin = self.info.zmin
+        else:
+            zmin = self.zmin_fixed
+
+        xmin = self.info.xmin
+        ymin = self.info.ymin
+
+        return (xmin, ymin, zmin)
+
+    def _get_origin_circ(self):
+        """
+        Get origin of the CIRC visualization domain
+
+        Returns
+        -------
+        origin: 3-tuple
+            X, Y and Z positions of the visualization  domain
+        """
+
+        # Get the Z and R axes from the original data
+        z, r = self.info.z, self.info.r
+        r = r[r.size//2:]
+
+        # shift the visualization domain origin if needed
+        if self.zmin_fixed is not None:
+            z -= z.min() - self.zmin_fixed
+
+        return (z.min(), -r.max())
