@@ -34,8 +34,8 @@ class Opmd2VTK(opmd2VTKGeneric):
     - write_fields_vtk
     - write_species_vtk
     and private methods:
-    - _convert_mesh_3d
-    - _convert_mesh_circ
+    - _get_vtk_mesh_3d
+    - _get_vtk_mesh_circ
 
     For more details, see the corresponding docstrings.
     """
@@ -202,12 +202,10 @@ class Opmd2VTK(opmd2VTKGeneric):
 	
             write_data(self.pts_vtk, name_base.format(specie, istr))
 
-    def _get_mesh_3d(self, origin, resolutions):
-        # register the grid VTK container
+    def _get_vtk_mesh_3d(self, origin, resolutions):
         self.grid = vtk.ImageData(dimensions=self.dimensions,
             origin=origin, spacing=resolutions)
 
-    def _get_mesh_circ(self, dimensions, points):
-        # register the grid VTK container
+    def _get_vtk_mesh_circ(self, dimensions, points):
         self.grid = vtk.StructuredGrid(dimensions=dimensions)
         self.grid.points = points

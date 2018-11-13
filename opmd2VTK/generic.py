@@ -19,7 +19,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import pyvtk as vtk
 import numpy as np
 import os
 
@@ -34,8 +33,8 @@ class opmd2VTKGeneric:
     - _get_species
     - _get_opmd_field_3d
     - _get_opmd_field_circ
-    - _make_vtk_mesh_3d
-    - _make_vtk_mesh_circ
+    - _make_mesh_3d
+    - _make_mesh_circ
     - _get_origin_3d
     - _get_origin_circ
 
@@ -98,12 +97,12 @@ class opmd2VTKGeneric:
         if self.geom=='3dcartesian':
             comps = self.ts.fields_metadata[fld]['axis_labels']
             get_field = self._get_opmd_field_3d
-            make_mesh = self._make_vtk_mesh_3d
+            make_mesh = self._make_mesh_3d
             get_origin = self._get_origin_3d
         elif self.geom=='thetaMode':
             comps = ['x', 'y', 'z']
             get_field = self._get_opmd_field_circ
-            make_mesh = self._make_vtk_mesh_circ
+            make_mesh = self._make_mesh_circ
             get_origin = self._get_origin_circ
 
         flds = []
@@ -150,10 +149,10 @@ class opmd2VTKGeneric:
         # Choose the get_field and make_grid finctions for the given geometry
         if self.geom=='3dcartesian':
             get_field = self._get_opmd_field_3d
-            make_mesh = self._make_vtk_mesh_3d
+            make_mesh = self._make_mesh_3d
         elif self.geom=='thetaMode':
             get_field = self._get_opmd_field_circ
-            make_mesh = self._make_vtk_mesh_circ
+            make_mesh = self._make_mesh_circ
 
         fld_data, self.info = get_field(fld, comp=comp)
         make_mesh()
@@ -180,10 +179,10 @@ class opmd2VTKGeneric:
         # Choose the get_field and make_grid finctions for the given geometry
         if self.geom=='3dcartesian':
             get_field = self._get_opmd_field_3d
-            make_mesh = self._make_vtk_mesh_3d
+            make_mesh = self._make_mesh_3d
         elif self.geom=='thetaMode':
             get_field = self._get_opmd_field_circ
-            make_mesh = self._make_vtk_mesh_circ
+            make_mesh = self._make_mesh_circ
 
         fld_data, self.info = get_field(fld)
         make_mesh()
@@ -336,7 +335,7 @@ class opmd2VTKGeneric:
 
         return coords, scalars_to_add
 
-    def _make_vtk_mesh_3d(self):
+    def _make_mesh_3d(self):
         """
         Create a simple 3D mesh using vtk.StructuredPoints method,
         and using the dimensions, origin, resolutions from
@@ -356,9 +355,9 @@ class opmd2VTKGeneric:
         dz *= self.sample[2]
 
         resolutions = (dx, dy, dz)
-        self._get_mesh_3d(origin, resolutions)
+        self._get_vtk_mesh_3d(origin, resolutions)
 
-    def _make_vtk_mesh_circ(self):
+    def _make_mesh_circ(self):
         """
         Create a cylindric mesh using vtk.StructuredGrid method.
         Note:
@@ -400,7 +399,7 @@ class opmd2VTKGeneric:
             start = end
 
         # register the grid VTK container
-        self._get_mesh_circ( (self.Nth+1, Nr, Nz), points )
+        self._get_vtk_mesh_circ( (self.Nth+1, Nr, Nz), points )
 
     def _get_origin_3d(self):
         """
