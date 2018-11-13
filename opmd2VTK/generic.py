@@ -28,16 +28,16 @@ class opmd2VTKGeneric:
     Generic (API-independant) class for the opmd2VTK converter
     Class is initialzed with the OpenPMDTimeSeries object from openPMD-viewer.
     It contains the following private methods:
-    - _convert_field_vec_full
-    - _convert_field_vec_comp
-    - _convert_field_scl
+    - _get_field_vec_full
+    - _get_field_vec_comp
+    - _get_field_scl
+    - _get_species
     - _get_opmd_field_3d
     - _get_opmd_field_circ
     - _make_vtk_mesh_3d
-    - _get_origin_3d
     - _make_vtk_mesh_circ
+    - _get_origin_3d
     - _get_origin_circ
-    - _convert_species
 
     For more details, see the corresponding docstrings.
     """
@@ -77,7 +77,7 @@ class opmd2VTKGeneric:
             except OSError :
                 pass
 
-    def _convert_field_vec_full(self, fld):
+    def _get_field_vec_full(self, fld):
         """
         Convert the given scalar or vector fields from the
         openPMD format to a VTK container.
@@ -124,9 +124,10 @@ class opmd2VTKGeneric:
                   .format(fld),
                   "and option CommonMesh=True is used")
 
+        flds = np.array(flds).T
         return flds, fld
 
-    def _convert_field_vec_comp(self, fld, comp):
+    def _get_field_vec_comp(self, fld, comp):
         """
         Convert the given scalar or vector fields from the
         openPMD format to a VTK container.
@@ -159,7 +160,7 @@ class opmd2VTKGeneric:
 
         return fld_data, fld+comp
 
-    def _convert_field_scl(self, fld):
+    def _get_field_scl(self, fld):
         """
         Convert the given scalar or vector fields from the
         openPMD format to a VTK container.
@@ -281,7 +282,7 @@ class opmd2VTKGeneric:
 
         return fld3d, info
 
-    def _convert_species(self, species):
+    def _get_species(self, species):
         """
         Convert the given species from the openPMD format to a VTK container.
 
@@ -377,7 +378,7 @@ class opmd2VTKGeneric:
             start = end
 
         # register the grid VTK container
-        self._get_mesh_circ(dimensions=(self.Nth+1, Nr, Nz), points)
+        self._get_mesh_circ( (self.Nth+1, Nr, Nz), points )
 
     def _get_origin_3d(self):
         """

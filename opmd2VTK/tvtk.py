@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import numpy as np
 import os
+from .generic import opmd2VTKGeneric
 from tvtk.api import tvtk as vtk
 from tvtk.api import write_data
 
@@ -97,11 +98,11 @@ class Opmd2VTK(opmd2VTKGeneric):
             for fld in flds:
                 field_type = self.ts.fields_metadata[fld]['type']
                 if field_type=='vector':
-                    fdata, fname = self._convert_field_vec_full(fld)
+                    fdata, fname = self._get_field_vec_full(fld)
                     indx = self.grid.point_data.add_array( fdata )
                     self.grid.point_data.get_array(indx).name = fname
                 elif field_type=='scalar':
-                    fdata, fname = self._convert_field_scl(fld)
+                    fdata, fname = self._get_field_scl(fld)
                     indx = self.grid.point_data.add_array(fdata)
                     self.grid.point_data.get_array(indx).name = fname
 
@@ -115,14 +116,14 @@ class Opmd2VTK(opmd2VTKGeneric):
                         fld_full = fld + comp
                         file_name = self.path+'vtk_fields_{}_{}'\
                            .format(fld_full, istr)
-                        fdata, fname = self._convert_field_vec_comp(fld, comp)
+                        fdata, fname = self._get_field_vec_comp(fld, comp)
                         indx = self.grid.point_data.add_array(fdata)
                         self.grid.point_data.get_array(indx).name = fname
                         write_data(self.grid, file_name)
                 elif field_type=='scalar':
                     file_name = self.path+'vtk_fields_{}_{}'\
                        .format(fld, istr)
-                    fdata, fname = self._convert_field_scl(fld)
+                    fdata, fname = self._get_field_scl(fld)
                     indx = self.grid.point_data.add_array(fdata)
                     self.grid.point_data.get_array(indx).name = fname
                     write_data(self.grid, file_name)
@@ -181,21 +182,21 @@ class Opmd2VTK(opmd2VTKGeneric):
             points, scalars_to_add = self._get_species(specie)
 
         	# Create the points container
-        	self.pts_vtk = vtk.PolyData(points=coords)
+            self.pts_vtk = vtk.PolyData(points=coords)
 	
         	# Create the scalars containers
-        	for i, scalar in enumerate(scalars_to_add):
-            	indx = self.pts_vtk.point_data.add_array(scalar.astype(self.dtype))
-            	self.pts_vtk.point_data.get_array(indx).name = self.scalars[i]
+            for i, scalar in enumerate(scalars_to_add):
+                indx = self.pts_vtk.point_data.add_array(scalar.astype(self.dtype))
+                self.pts_vtk.point_data.get_array(indx).name = self.scalars[i]
 	
             write_data(self.pts_vtk, name_base)
 
-    def _convert_mesh3d(self, origin, resolutions):
+    def _get_mesh_3d(self, origin, resolutions):
         # register the grid VTK container
-        self.grid = vtk.ImageData(dimensions=self.dimensions, 
+        self.grid = vtk.ImageData(dimensions=self.dimensions,
             origin=origin, spacing=resolutions)
 
-    def _convert_mesh_circ(self, dimensions, points):
+    def _get_mesh_circ(self, dimensions, points):
         # register the grid VTK container
         self.grid = vtk.StructuredGrid(dimensions=dimensions)
         self.grid.points = points

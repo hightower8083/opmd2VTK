@@ -19,11 +19,11 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import pyvtk as vtk
 import numpy as np
 import os
-
 from .generic import opmd2VTKGeneric
+import pyvtk as vtk
+
 
 class Opmd2VTK(opmd2VTKGeneric):
     """
@@ -98,11 +98,12 @@ class Opmd2VTK(opmd2VTKGeneric):
             for fld in flds:
                 field_type = self.ts.fields_metadata[fld]['type']
                 if field_type=='vector':
-                    fdata, fname = self._convert_field_vec_full(fld)
+                    fdata, fname = self._get_field_vec_full(fld)
+                    print (fdata.shape, fname)
                     vecs = vtk.Vectors(fdata, name=fname)
                     vtk_container.append( vecs )
                 elif field_type=='scalar':
-                    fdata, fname = self._convert_field_scl(fld)
+                    fdata, fname = self._get_field_scl(fld)
                     scl = vtk.Scalars(fdata, name=fname)
                     vtk_container.append( scl )
 
@@ -118,7 +119,7 @@ class Opmd2VTK(opmd2VTKGeneric):
                         fld_full = fld + comp
                         file_name = self.path+'vtk_fields_{}_{}'\
                            .format(fld_full, istr)
-                        fdata, fname = self._convert_field_vec_comp(fld, comp)
+                        fdata, fname = self._get_field_vec_comp(fld, comp)
                         scl = vtk.Scalars(fdata, name=fname)
                         vtk.VtkData(self.grid, vtk.PointData(scl))\
                            .tofile(file_name, format=format)
@@ -126,11 +127,10 @@ class Opmd2VTK(opmd2VTKGeneric):
                 elif field_type=='scalar':
                     file_name = self.path+'vtk_fields_{}_{}'\
                        .format(fld, istr)
-                    fdata, fname = self._convert_field_vec_comp(fld, comp)
+                    fdata, fname = self._get_field_vec_comp(fld, comp)
                     scl = vtk.Scalars(fdata, name=fname)
                     vtk.VtkData(self.grid, vtk.PointData(scl))\
                        .tofile(file_name, format=format)
-
 
     def write_species_vtk(self, species=None, iteration=0, format='binary',
                           scalars=['ux', 'uy', 'uz', 'w'], select=None,
@@ -183,7 +183,7 @@ class Opmd2VTK(opmd2VTKGeneric):
 
         # Convert and save all the species
         for specie in species:
-            points, scalars_to_add = self._convert_species(specie)
+            points, scalars_to_add = self._get_species(specie)
 
 
             # Create the points container
@@ -199,11 +199,9 @@ class Opmd2VTK(opmd2VTKGeneric):
                 .tofile(name_base.format(specie,istr), format=format)
 
     def _get_mesh_3d(self, origin, resolutions):
-        self.grid = vtk.StructuredPoints(self.dimensions, origin,
-                                         resolutions)
+        self.grid = vtk.StructuredPoints(self.dimensions, origin, resolutions)
 
     def _get_mesh_circ(self, dimensions, points):
-        self.grid = vtk.StructuredGrid(dimensions=(self.Nth+1, Nr, Nz),
-                                       points=points)
+        self.grid = vtk.StructuredGrid(dimensions=dimensions, points=points)
 
 
