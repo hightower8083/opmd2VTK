@@ -217,9 +217,12 @@ class opmd2VTKGeneric:
         fld_data, info = self.ts.get_field(fld, coord=comp, slicing=None,
                                            iteration=self.iteration)
 
+        fld_data = fld_data[ ::self.sample[0],
+                             ::self.sample[1],
+                             ::self.sample[2] ]
+
         # register the grid dimensions
         self.dimensions = fld_data.shape
-
         fld_data = fld_data.astype(self.dtype).T.ravel()
 
         return fld_data, info
@@ -255,13 +258,18 @@ class opmd2VTKGeneric:
         # Get the Z and R axes from the original data
         z, r = info.z, info.r
         r = r[r.size//2:]
+
+        fld2d = fld2d[::self.sample[0], ::self.sample[1]]
+        r = r[::self.sample[0]]
+        z = z[::self.sample[1]]
+
         Nz, Nr = z.size, r.size
 
         # Make Theta axis (half)
         theta = (2*np.pi/self.Nth) * np.arange(self.Nth//2)
 
         # Allocate the scalar field in the VTK shape (Z,R,Theta)
-        fld3d = np.zeros((z.size, r.size, self.Nth+1), dtype=self.dtype)
+        fld3d = np.zeros((Nz, Nr, self.Nth+1), dtype=self.dtype)
 
         # Write the field for th=0
         # Note: array contain a copy of th=0 at th=2*pi, which is
@@ -274,6 +282,7 @@ class opmd2VTKGeneric:
         for i, th in enumerate(theta[1:]):
             fld2d, info = self.ts.get_field(fld, coord=comp, slicing=None,
                                             iteration=self.iteration, theta=th)
+            fld2d = fld2d[::self.sample[0], ::self.sample[1]]
             fld3d[:,:,i+1] = fld2d[Nr:].T.astype(self.dtype)
             fld3d[:,:,i+1+self.Nth//2] = fld2d[:Nr][::-1].T.astype(self.dtype)
 
@@ -305,8 +314,11 @@ class opmd2VTKGeneric:
                                    species=species, iteration=self.iteration,
                                    select=self.select)
 
+        for comp in pts:
+            comp = comp.astype(self.dtype)[::self.sample_ptcl]
+
         # Split coordinates and scalars
-        coords = np.array(pts[:3]).astype(self.dtype).T
+        coords = np.array(pts[:3]).T
         scalars_to_add = pts[3:]
 
         # Convert microns to meters
@@ -337,7 +349,13 @@ class opmd2VTKGeneric:
 
         # Get origin and resolution of the 3D visualization domain
         origin = self._get_origin_3d()
-        resolutions = (self.info.dx, self.info.dy, self.info.dz)
+        dx, dy, dz = self.info.dx, self.info.dy, self.info.dz
+
+        dx *= self.sample[0]
+        dy *= self.sample[1]
+        dz *= self.sample[2]
+
+        resolutions = (dx, dy, dz)
         self._get_mesh_3d(origin, resolutions)
 
     def _make_vtk_mesh_circ(self):
@@ -356,6 +374,10 @@ class opmd2VTKGeneric:
         # Get the Z and R axes from the original data
         z, r = self.info.z, self.info.r
         r = r[r.size//2:]
+
+        r = r[::self.sample[0]]
+        z = z[::self.sample[1]]
+
         Nr, Nz = r.size, z.size
         # Make Theta axis (half)
         theta = np.r_[0:2*np.pi:(self.Nth+1)*1j]
@@ -430,3 +452,4 @@ class opmd2VTKGeneric:
             z -= z.min() - self.zmin_fixed
 
         return (z.min(), -r.max())
+

@@ -39,9 +39,9 @@ class Opmd2VTK(opmd2VTKGeneric):
     For more details, see the corresponding docstrings.
     """
 
-    def write_fields_vtk(self, flds=None, iteration=0,
-                         format='binary', zmin_fixed=None,
-                         Nth=24, CommonMesh=True):
+    def write_fields_vtk( self, flds=None, iteration=0,
+                          format='binary', zmin_fixed=None, Nth=24, 
+                          CommonMesh=True, sample=None):
         """
         Convert the given list of scalar and vector fields from the
         openPMD format to a VTK container, and write it to the disk.
@@ -73,6 +73,11 @@ class Opmd2VTK(opmd2VTKGeneric):
             If True, the same mesh will be used and fields will be converted
             to the scalar and vector types. If False, each component will be
             saved as a separate file with its own grid.
+
+        sample: tuple of 2 or 3 integers or None
+            If not None, the field arrays will be reduced by skipping
+            elements, i.e. for 3D geometry field F is replaced by
+            F[::sample[0],::sample[1],::sample[2]]
         """
         # Check available fields if comps is not defined
         if flds is None:
@@ -83,6 +88,11 @@ class Opmd2VTK(opmd2VTKGeneric):
         self.zmin_fixed = zmin_fixed
         self.CommonMesh = CommonMesh
         self.Nth = Nth
+
+        if sample is None:
+            self.sample = (1,1,1)
+        else:
+            self.sample = sample
 
         # Set grid to None, in order to recomupte it
         self.grid = None
@@ -134,7 +144,7 @@ class Opmd2VTK(opmd2VTKGeneric):
 
     def write_species_vtk(self, species=None, iteration=0, format='binary',
                           scalars=['ux', 'uy', 'uz', 'w'], select=None,
-                          zmin_fixed=None):
+                          zmin_fixed=None, sample_ptcl=None):
         """
         Convert the given list of species from the openPMD format to
         a VTK container, and write it to the disk.
@@ -165,6 +175,9 @@ class Opmd2VTK(opmd2VTKGeneric):
             fix the origin of the visualization domain. If float number
             is given it will be use as z-origin of the visualization domain
 
+        sample_ptcl: integer or None
+            If not None, the species arrays will be reduced by skipping
+            elements
         """
         # Check available fields if comps is not defined
         if species is None:
@@ -176,6 +189,11 @@ class Opmd2VTK(opmd2VTKGeneric):
         self.select = select
         self.scalars = scalars
 
+        if sample_ptcl is None:
+            self.sample_ptcl = 1
+        else:
+            self.sample_ptcl = sample_ptcl
+
         # Make a numer string for the file to write
         istr = str(self.iteration)
         while len(istr)<7 : istr='0'+istr
@@ -185,15 +203,14 @@ class Opmd2VTK(opmd2VTKGeneric):
         for specie in species:
             points, scalars_to_add = self._get_species(specie)
 
-
             # Create the points container
             pts_vtk = vtk.PolyData(points)
     
             # Create the scalars containers
             scalars_vtk = []
             for i, scalar in enumerate(scalars_to_add):
-                scalars_vtk.append(vtk.Scalars(scalar.astype(self.dtype),
-                                   name=self.scalars[i]))
+                scalars_vtk.append( vtk.Scalars(scalar, 
+                                    name=self.scalars[i]) )
     
             vtk.VtkData(pts_vtk, vtk.PointData(*scalars_vtk) )\
                 .tofile(name_base.format(specie,istr), format=format)
