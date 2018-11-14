@@ -1,27 +1,40 @@
 # opmd2VTK: Converter of [openPMD](http://www.openpmd.org/#/start) files to  [VTK](https://www.vtk.org) 
 
-The API for OpenPMD-files is based on [openPMD-viewer](https://github.com/openPMD/openPMD-viewer) and possible VTK APIs are [PyVTK](https://github.com/pearu/pyvtk) and 
-[tvtk](http://docs.enthought.com/mayavi/tvtk/README.html). PyVTK API is a more lightweight dependance, but tvtk API works with XML format of VTK and is faster.
+This library provides an easy way to export 3D and quasi-3D simulation data 
+from [openPMD](http://www.openpmd.org/#/start) format to [VTK](https://www.vtk.org) 
+files. Present API for OpenPMD is based on [openPMD-viewer](https://github.com/openPMD/openPMD-viewer) 
+and accepts only HDF5 input format. For VTK, **opmd2VTK** can use either 
+[PyVTK](https://github.com/pearu/pyvtk) or 
+[tvtk](http://docs.enthought.com/mayavi/tvtk/README.html). 
+`PyVTK` is a more lightweight dependancy, while `tvtk` can be much faster as it 
+works with a newer VTK format.
 
 
 ## Installation
 The code was tested only under Linux and MacOS. The recommended installation is through the [Anaconda](https://www.continuum.io/why-anaconda) distribution.
 If Anaconda is not your default Python installation, download and install it from [here](https://www.continuum.io/downloads).
 
-It is assumed that openPMD-viewer is already installed. 
+
+First install the dependencies:
 - VTK can be installed from anaconda:
 ```
 conda install vtk
 ```
-- for pyvtk API (this step is default and is also done by the installer):
+- openPMD-viewer can be installed from PyPi:
+```
+pip install openPMD-viewer
+```
+- pyvtk can be installed from PyPi:
 ```
 pip install pyvtk
 ```
-- tvtk API is a part of Mayavi and can be installed with it:
+- tvtk is a part of Mayavi and can be installed with it from PyPi:
 ```
 pip install mayavi
 ```
-- clone **opmd2VTK**, `cd` into the folder and install it:
+
+
+After dependencies are satisfied, clone **opmd2VTK**, `cd` into the folder and install it:
 ```
 git clone https://github.com/hightower8083/opmd2VTK.git
 cd opmd2VTK
