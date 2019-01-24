@@ -218,10 +218,27 @@ class opmd2VTKGeneric:
             fields metadata as returned by the get_field method of
             openPMD TimeSeries
         """
-        # Get the particle data
+        # Get the field data
         fld_data, info = self.ts.get_field(fld, coord=comp, slicing=None,
                                            iteration=self.iteration)
 
+        # Check the axis labela and swap to VTK order if needed
+        if self.geom=='3dcartesian':
+            vtk_axis_order = {'x':0, 'y':1, 'z':2}
+            axis_labels  = list(self.ts.fields_metadata[fld]['axis_labels'])    
+            didSwap = True
+            while didSwap:
+                didSwap = False
+                for i_ax in range(3):
+                    i_ax_dest = vtk_axis_order[axis_labels[i_ax]]
+                    if i_ax_dest != i_ax:
+                        fld_data = fld_data.swapaxes(i_ax, i_ax_dest)
+                        _ = axis_labels[i_ax_dest]
+                        axis_labels[i_ax_dest] = axis_labels[i_ax]
+                        axis_labels[i_ax] = _
+                        didSwap = True
+    
+        # Perform subsampling
         fld_data = fld_data[ ::self.sample[0],
                              ::self.sample[1],
                              ::self.sample[2] ]
