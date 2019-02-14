@@ -194,7 +194,7 @@ class opmd2VTKGeneric:
         make_mesh()
         return fld_data, fld
 
-    def _get_opmd_field_3d(self, fld, comp=None):
+    def _get_opmd_field_3d(self, fld, comp=None, flatten=True):
         """
         Wrapper function to return the 3D array with
         the field.
@@ -245,11 +245,11 @@ class opmd2VTKGeneric:
 
         # register the grid dimensions
         self.dimensions = fld_data.shape
-        fld_data = fld_data.astype(self.dtype).T.ravel()
+        if flatten: fld_data = fld_data.astype(self.dtype).T.ravel()
 
         return fld_data, info
 
-    def _get_opmd_field_circ(self, fld, comp=None):
+    def _get_opmd_field_circ(self, fld, comp=None, flatten=True):
         """
         Wrapper function to return the 3D array with
         the field.
@@ -308,7 +308,7 @@ class opmd2VTKGeneric:
             fld3d[:,:,i+1] = fld2d[Nr:].T.astype(self.dtype)
             fld3d[:,:,i+1+self.Nth//2] = fld2d[:Nr][::-1].T.astype(self.dtype)
 
-        fld3d = fld3d.ravel()
+        if flatten: fld3d = fld3d.ravel()
         fld2d = None
 
         return fld3d, info
@@ -407,6 +407,11 @@ class opmd2VTKGeneric:
         # shift the visualization domain origin if needed
         if self.zmin_fixed is not None:
             z -= z.min() - self.zmin_fixed
+
+        # Register the axes (optional, but useful)
+        self.z = z
+        self.r = r
+        self.theta = theta
 
         # Make the grid-point (copied from TVTK tutorial)
         points = np.empty([len(theta)*len(r)*len(z),3])
