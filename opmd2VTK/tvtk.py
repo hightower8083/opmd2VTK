@@ -193,13 +193,13 @@ class Opmd2VTK(opmd2VTKGeneric):
             points, scalars_to_add = self._get_species(specie)
 
         	# Create the points container
-            self.pts_vtk = vtk.PolyData(points=coords)
-	
+            self.pts_vtk = vtk.PolyData(points=points)
+
         	# Create the scalars containers
             for i, scalar in enumerate(scalars_to_add):
                 indx = self.pts_vtk.point_data.add_array(scalar)
                 self.pts_vtk.point_data.get_array(indx).name = self.scalars[i]
-	
+
             write_data(self.pts_vtk, name_base.format(specie, istr))
 
     def _get_vtk_mesh_3d(self, origin, resolutions):
