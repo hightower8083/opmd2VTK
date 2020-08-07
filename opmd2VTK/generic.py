@@ -343,11 +343,6 @@ class opmd2VTKGeneric:
         coords = np.array(pts[:3]).T
         scalars_to_add = pts[3:]
 
-        # Convert microns to meters
-        # Note: in further release of openPMD-viewer, coords
-        #       are expected to be meters by default
-        coords *= 1e-6
-
         # If zmin_fixed mode is chosen, shift the z-coordinates
         # to match the fields box
         if self.zmin_fixed is not None:
